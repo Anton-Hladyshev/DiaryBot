@@ -1,24 +1,23 @@
 import aiohttp
-import asyncio
 import json
-from typing import Dict, List, Tuple
-from datetime import datetime
+from typing import Dict, List
+from datetime import datetime, timedelta
 from dateutil.parser import parse
 
 
-async def handle(week: int) -> Dict:
+async def handle(week: int) -> Dict:    #Getting the data in json from API referenced in README
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://edt-iut-info-limoges.vercel.app/api/timetable/A1/{week}") as response:
             content = await response.text()
             return json.loads(content)["data"]
 
 
-async def filter_data(week: int, group: int, sub: int) -> List:
+async def filter_data(week: int, day: str, group: int, sub: int) -> List:
     content = await handle(week)
-    today_lessons = get_today_lessons(content)
-    amphi_lessons = get_amphi_lessons(today_lessons)
-    td_lessons = get_td_lessons(today_lessons, group)
-    tp_lessons = get_tp_lessons(today_lessons, group, sub)
+    all_lessons = get_lessons_by_day(content, day)
+    amphi_lessons = get_amphi_lessons(all_lessons)
+    td_lessons = get_td_lessons(all_lessons, group)
+    tp_lessons = get_tp_lessons(all_lessons, group, sub)
 
     my_lessons = amphi_lessons + td_lessons + tp_lessons
     modified_and_sorted_lessons = modify_lessons_by_time_and_sort(my_lessons)
@@ -49,16 +48,23 @@ def modify_lessons_by_time_and_sort(content: list):
 
     return content[:len(content) - count_double_lessons]
 
-            
 
-
-
-
-def get_today_lessons(content: dict) -> List:
+def get_lessons_by_day(content: dict, day: str) -> List:
     res = [lesson for lesson in content["lessons"]
-           if lesson.get("start_date").split("T")[0] == str(datetime.today()).split(' ')[0]]
+           if lesson.get("start_date").split("T")[0] == day]
     return res
 
+
+def get_days_of_this_week() -> List:
+    days_list = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    dt = datetime.today()
+    start = dt - timedelta(dt.weekday())
+
+    for num, day in enumerate(days_list):
+        date = start + timedelta(days=num)
+        days_list[num] = (date.strftime("%Y-%m-%d"), day)
+
+    return days_list
 
 def get_amphi_lessons(content: list) -> List:
     res = [lesson for lesson in content if lesson.get("group") is None]

@@ -3,6 +3,7 @@ from create_bot import bot, dp, scheduler
 from handlers.start import start_router
 import datetime
 
+
 async def main():
     #scheduler.add_job(send_time_mesage, "interval", seconds=10)
     #scheduler.start()

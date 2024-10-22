@@ -4,26 +4,15 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.types.keyboard_button import KeyboardButton
 from aiogram.types import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardButton
-import re
 import main
 from typing import List
 
 start_router = Router()
 
 
-async def get_week_data() -> List:
-    data = await main.filter_data(6, 2, 1)
+async def get_week_data(day) -> List:
+    data = await main.filter_data(week=8, day=day, group=2, sub=1)
     return data
-
-
-@start_router.message(CommandStart())
-async def cmd_start(message: Message):
-    await message.answer('Запуск сообщения по команде /start используя фильтр CommandStart()')
-
-
-@start_router.message(Command('start_2'))
-async def cmd_start_2(message: Message):
-    await message.answer('Запуск сообщения по команде /start_2 используя фильтр Command()')
 
 
 @start_router.message(F.text == '/call_buttons')
@@ -40,8 +29,21 @@ async def cmd_call_buttons(message: Message):
 
 @start_router.message(F.text.lower() == "print the schedule")
 async def show_schedule(message: Message):
-    filtered_data = await get_week_data()
+    dates_list = main.get_days_of_this_week()
+    kb = list()
 
+    for date in dates_list:
+        button = InlineKeyboardButton(text=date[1], callback_data=f"date#{date[0]}")
+        kb.append([button])
+
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=kb)
+    await message.answer(text="For which day of week?", reply_markup=reply_markup)
+
+
+@start_router.callback_query(F.data.startswith("date#"))
+async def show_schedule(callback: CallbackQuery):
+    global filtered_data
+    filtered_data = await get_week_data(callback.data.split('#')[1])
     buttons_list = []
 
     for subject in filtered_data:
@@ -52,8 +54,9 @@ async def show_schedule(message: Message):
         buttons_list.append([InlineKeyboardButton(text=f"{type_}:{name}", callback_data=f"id#{lesson_id}")])
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons_list)
-    await message.answer(text=f"The schedule for today", reply_markup=kb)
-    await message.answer(text="Here you are )", reply_markup=ReplyKeyboardRemove())
+    await callback.message.answer(text=f"The schedule for today", reply_markup=kb)
+    await callback.answer(text="Click on a lesson to show the details")
+    await callback.answer(reply_markup=ReplyKeyboardRemove())
 
 
 @start_router.message(F.text.lower() == "print your homework")
@@ -67,7 +70,6 @@ async def show_homework(message: Message):
 
 @start_router.callback_query(F.data.startswith("id#"))
 async def show_button_data(callback: CallbackQuery) -> None:
-    filtered_data = await get_week_data()
     id_ = callback.data.split('#')[1]
 
     corresponding_lesson = list(filter(lambda subject: subject.get("_id") == id_, filtered_data))
