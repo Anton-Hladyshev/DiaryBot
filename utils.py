@@ -9,20 +9,26 @@ async def handle(week: int) -> Dict:    #Getting the data in json from API refer
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://edt-iut-info-limoges.vercel.app/api/timetable/A1/{week}") as response:
             content = await response.text()
-            return json.loads(content)["data"]
+
+            return json.loads(content)
 
 
 async def filter_data(week: int, day: str, group: int, sub: int) -> List:
     content = await handle(week)
-    all_lessons = get_lessons_by_day(content, day)
-    amphi_lessons = get_amphi_lessons(all_lessons)
-    td_lessons = get_td_lessons(all_lessons, group)
-    tp_lessons = get_tp_lessons(all_lessons, group, sub)
 
-    my_lessons = amphi_lessons + td_lessons + tp_lessons
-    modified_and_sorted_lessons = modify_lessons_by_time_and_sort(my_lessons)
+    if content["success"]:
+        data = content["data"]
+        all_lessons = get_lessons_by_day(data, day)
+        amphi_lessons = get_amphi_lessons(all_lessons)
+        td_lessons = get_td_lessons(all_lessons, group)
+        tp_lessons = get_tp_lessons(all_lessons, group, sub)
 
-    return modified_and_sorted_lessons
+        my_lessons = amphi_lessons + td_lessons + tp_lessons
+        modified_and_sorted_lessons = modify_lessons_by_time_and_sort(my_lessons)
+
+        return modified_and_sorted_lessons
+    else:
+        raise ConnectionError
 
 
 def modify_lessons_by_time_and_sort(content: list):
@@ -81,6 +87,3 @@ def get_tp_lessons(content: list, group: int, sub: int) -> List:
     res = [lesson for lesson in content
            if lesson.get("group") is not None and lesson.get("group").get("main") == group and lesson.get("group").get("sub") == sub]
     return res
-
-
-#if __name__ == "__main__":
