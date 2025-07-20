@@ -7,7 +7,6 @@ from decouple import config
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
-admins = config("ADMIN")
 scheduler = AsyncIOScheduler(timezone="Europe/Paris")
 dp = Dispatcher(storage=MemoryStorage())
 
